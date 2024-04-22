@@ -6,9 +6,13 @@ import time
 
 start_time = time.time()
 
-#process_files = []
+
 file_name = '2024-04-01_UnitedHealthcare-of-Wisconsin--Inc-_Insurer_OHPH-Acupuncture-Massage-Naturopath_31_in-network-rates.json'
 fp = os.path.join(os.getcwd(),'files',file_name)
+
+# Traverse directory to process files
+#filepath = os.path.join(os.getcwd(),'files')
+#dir_list = os.listdir(filepath)
 
 outputdirectory = 'outputfiles'
 
@@ -51,8 +55,8 @@ try:
 
     in_network_data = []
     for in_network in json_data['in_network']:
-        #for y in range (0,len(json_data['in_network'])-1):
-        for y in range (0,50):
+        for y in range (0,len(json_data['in_network'])-1):
+        #for y in range (0,50):
             for negotiated_rates in json_data['in_network'][y]['negotiated_rates']:
                 for neg_data in negotiated_rates['negotiated_prices']:
                     in_network_dict = {
@@ -80,8 +84,12 @@ try:
 
 
     # Output Files
+    print('Task Started : Writing to CSV files\n')
+
     df1.to_csv(outputdirectory + '\\providerreferences.csv')
     df2.to_csv(outputdirectory + '\\innetworkrates.csv')
+
+    print('Task Completed : Writing to CSV files\n')
 
 except Exception as e: 
     print(e)
