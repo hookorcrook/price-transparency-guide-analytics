@@ -5,6 +5,11 @@ import os
 import time
 import re
 
+# This script parses json for in-network provider rates data and generates csv files 
+
+# Set to 1 to generate combined file
+GENERATE_COMBINED_FILE = 0
+
 start_time = time.time()
 
 # Provide folder path to generate output files
@@ -13,6 +18,8 @@ outputdirectory = 'outputfiles'
 # Traverse directory to process files
 filepath = os.path.join(os.getcwd(),'files')
 dir_list = os.listdir(filepath)
+
+combined_df_list = []
 counter = 1
 
 # Extract Data for each file in the directory
@@ -28,7 +35,7 @@ for file in dir_list:
     try: 
 
 # Extracting provider data
-        print(f"Task Started: Parsing Provider Reference Data For File : {file} \n")
+        print(f"\nTask Started: Parsing Provider Reference Data For File : {file} \n")
 
         provider_data = []
         reporting_entity_name = json_data['reporting_entity_name']
@@ -50,12 +57,12 @@ for file in dir_list:
                     }
                     provider_data.append(provider_info)
 
-        print(f"Task Completed : Parsing Provider Reference Data For File : {file}\n")
+        print(f"\nTask Completed : Parsing Provider Reference Data For File : {file}\n")
         # Creating DataFrame to store provider data
         df1 = pd.DataFrame(provider_data)
 
         # Extracting in-network rates data
-        print(f"Task Started : Parsing In-Network Rates Data For File : {file}\n")
+        print(f"\nTask Started : Parsing In-Network Rates Data For File : {file}\n")
 
         in_network_data = []
         for y in range (0,len(json_data['in_network'])-1):
@@ -81,7 +88,7 @@ for file in dir_list:
                         in_network_data.append(in_network_dict)
 
     
-        print(f"Task Completed : Parsing In-Network Rates Data For File : {file}\n")
+        print(f"\nTask Completed : Parsing In-Network Rates Data For File : {file}\n")
         # Creating DataFrame to store provider data   
         df2 = pd.DataFrame(in_network_data)
 
@@ -96,16 +103,17 @@ for file in dir_list:
                       ).drop(columns='provider_references')
 
         #df = df.drop(columns='provider_references').drop_duplicates()
-
         # Output Files
-        print(f"Task Started : Writing to CSV files For File : {file}\n")
+        print(f"\nTask Started : Writing to CSV files For File : {file}\n")
 
-        #df1.to_csv(outputdirectory + '\\providerreferences_' + 'file' + str(counter) + '.csv')
-        #df2.to_csv(outputdirectory + '\\innetworkrates_' + 'file' + str(counter) + '.csv')
+        #df1.to_csv(outputdirectory + '\\providerreferences_' + state_name + '_file_' + str(counter) + '.csv')
+        #df2.to_csv(outputdirectory + '\\innetworkrates_' + '_file_' + str(counter) + '.csv')
 
-        df.to_csv(outputdirectory + '\\provider_in-networkrates_' + state_name + '_file' + str(counter) + '.csv')
+        df.to_csv(outputdirectory + '\\provider_in-networkrates_' + state_name + '_file_' + str(counter) + '.csv')
 
-        print(f"Task Completed : Writing to CSV files For File : {file}\n")
+        print(f"\nTask Completed : Writing to CSV files For File : {file}\n")
+        if(GENERATE_COMBINED_FILE == 1):
+            combined_df_list.append(df) 
         counter+=1
 
     except Exception as e: 
@@ -118,7 +126,13 @@ for file in dir_list:
         elapsed_time = file_end_time - file_start_time
         print(f"\n--- Parsed File {file} in Time: {elapsed_time:.2f} seconds ---")
 
-end_time = time.time()
+if(GENERATE_COMBINED_FILE == 1):
+    print(f"\nTask Started : Writing to Combined CSV file For {counter-1} files\n")
+    combined_df = pd.concat(combined_df_list)
+    combined_df.to_csv(outputdirectory + '\\provider_in-networkrates_combinedfile.csv')
+    print(f"\nTask Completed : Writing to Combined CSV files For {counter-1} files\n")
+
+end_time = time.time() 
 total_elapsed_time = end_time-start_time
-print(f"\n--- Total Execution Time: {total_elapsed_time:.2f} seconds ---")
+print(f"\n--- Total Execution Time: {total_elapsed_time:.2f} seconds ---\n")
     
