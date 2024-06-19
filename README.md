@@ -173,10 +173,11 @@ PATCH version when backwards compatible bug fixes are introduced.
 
 The major version will be finalized to 1.0.0 for the schema to adhere to the July 2022 implementation date. Versioning of the schema can be tracked in the VERSION.md file.
 
+Operation Instructions-
 Using This Solution
 ====================
 
-Create directory structure inside 'files' for each input file type and:
+Create directory structure inside 'files' at root (add a new folder: 'files' if not exists) for each input file type and:
 
 -> Add provider in network rate files to files/in-network folder
 
@@ -184,6 +185,8 @@ Create directory structure inside 'files' for each input file type and:
 
 -> Add hospital price files to files/hospital-prices folder
 
+
+Create a new folder 'outputfiles' at root (if not exists). All the output csv files will be dumped in this location after processing
 
 
 To parse the input files and generate csv files:
