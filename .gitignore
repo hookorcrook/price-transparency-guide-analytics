@@ -1,1 +1,4 @@
 .DS_Store
+/outputfiles/
+/files/
+.vscode
