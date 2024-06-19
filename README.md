@@ -172,3 +172,19 @@ MINOR version when attributes/values are introduced or removed in a backwards co
 PATCH version when backwards compatible bug fixes are introduced.
 
 The major version will be finalized to 1.0.0 for the schema to adhere to the July 2022 implementation date. Versioning of the schema can be tracked in the VERSION.md file.
+
+Using This Solution
+====================
+
+-> Add provider in network rate files to files/in-network folder
+-> Add provider out network rate files to files/out-network folder
+-> Add hospital price files to files/hospital-prices folder
+
+To parse the input files and generate csv files:
+-> Run the parse_in-network_provider.py file for processing in-network provider rate files
+-> Run the parse_out-network_provider.py file for processing out-network provider rate files
+-> Run the parse_hospital_prices.py file for processing hospital pricing files
+
+Each file processed will be converted into a CSV file with standardized, clean and consistent output fields
+
+Note: You can pass the parameter generate_combined_file=True while initializing the process_in_network_files and process_out_network_files classes to generate a combined csv file
