@@ -1,6 +1,8 @@
 from hospital_price_parser import HospitalFileParser,HospitalDataStandardizer
+#from hospital_price_parser_threaded import HospitalFileParser,HospitalDataStandardizer
 import os
 import time
+import re
 
 
 
@@ -25,16 +27,19 @@ def main():
         standardized_data.drop_duplicates(inplace=True)
 
         print(standardized_data)
+        pattern = r'_(.*?)_'
+        match = re.search(pattern, file)
+        org_name = match.group(1) if match else 'Unknown' 
 
         print(f"\nTask Started : Writing to output CSV file for input file : {file} \n")
         if parser.file_type == 'xlsx':
-            standardized_data.to_csv(outputdirectory + '\\hospital-price-transparency_standardized_EXCEL.csv',index=False)
+            standardized_data.to_csv(outputdirectory + '\\' +org_name+ 'hospital-price-transparency_standardized_EXCEL.csv',index=False)
         if parser.file_type == 'json':
-             standardized_data.to_csv(outputdirectory + '\\hospital-price-transparency_standardized_JSON.csv',index=False)
+             standardized_data.to_csv(outputdirectory + '\\' +org_name+ 'hospital-price-transparency_standardized_JSON.csv',index=False)
         if parser.file_type == 'csv':
-             standardized_data.to_csv(outputdirectory + '\\hospital-price-transparency_standardized_CSV.csv',index=False)
+             standardized_data.to_csv(outputdirectory + '\\' +org_name+ 'hospital-price-transparency_standardized_CSV.csv',index=False)
         if parser.file_type == 'xml':
-             standardized_data.to_csv(outputdirectory + '\\hospital-price-transparency_standardized_XML.csv',index=False)
+             standardized_data.to_csv(outputdirectory + '\\' +org_name+ 'hospital-price-transparency_standardized_XML.csv',index=False)
         else:
             pass
         print(f"\nTask Complete : Writing to output CSV file for input file : {file} \n")

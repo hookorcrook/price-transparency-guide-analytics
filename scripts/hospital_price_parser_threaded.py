@@ -2,6 +2,7 @@ import pandas as pd
 import json
 import re
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class HospitalFileParser:
     def __init__(self, file_path):
@@ -33,7 +34,6 @@ class HospitalFileParser:
     def parse_csv(self):
         return pd.read_csv(self.file_path)
 
-    
     def parse_xlsx(self):
         xls = pd.ExcelFile(self.file_path)
         data_frames = []
@@ -43,13 +43,10 @@ class HospitalFileParser:
             data_frames.append(df)
         return pd.concat(data_frames, ignore_index=True)
 
-        
     def parse_json(self):
         try:
             with open(self.file_path, 'r', encoding='utf-8-sig') as f:
-                # 'utf-8-sig' is used to handle UTF-8 with BOM
                 data = f.read()
-                # Remove BOM characters if present
                 if data.startswith('\ufeff'):
                     data = data.encode('utf-8-sig').decode('utf-8-sig')
                 data = json.loads(data)
@@ -95,39 +92,48 @@ class HospitalDataStandardizer:
         standardized_data = []
         pattern = r'_(.*?)_'
         match = re.search(pattern, self.file_name)
-        source_file_name = match.group(1)
-        for index, row in self.data.iterrows():
-            for column in row.index:
-                if self.is_payer_column(column):
-                    standardized_entry = {
-                        'SourceName': source_file_name, 
-                        'Code': self.clean_code(self.get_code(row)),
-                        'CodeType': self.determine_code_type(row),
-                        'Description':  self.get_description(row),
-                        'RevCode': self.get_rev_code(row), 
-                        'Payer': self.clean_payer(column),
-                        'Rate': self.clean_rate(row[column])
-                    }
-                    standardized_data.append(standardized_entry)
+        source_file_name = match.group(1) if match else 'Unknown'
+
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self.standardize_row, row, source_file_name) for index, row in self.data.iterrows()]
+            for future in as_completed(futures):
+                standardized_data.extend(future.result())
+
         return pd.DataFrame(standardized_data)
+
+    def standardize_row(self, row, source_file_name):
+        standardized_entries = []
+        for column in row.index:
+            if self.is_payer_column(column):
+                code = self.get_code(row)
+                code_type = self.determine_code_type(row)
+                standardized_entry = {
+                    'SourceName': source_file_name,
+                    'Code': self.clean_code(code),
+                    'CodeType': code_type,
+                    'Description': self.get_description(row),
+                    'RevCode': self.get_rev_code(row),
+                    'Payer': self.clean_payer(column),
+                    'Rate': self.clean_rate(row[column])
+                }
+                standardized_entries.append(standardized_entry)
+        return standardized_entries
 
     def is_payer_column(self, column_name):
         non_payer_columns = [
-            #NWH
-            'Facility','Billing Code','Billing_Code','HCPCs', 'CPT/HCPCs', 'Code Description', 'Service_Description',
-            'Supply Code','Supply Name', 'Medication Name', 'Revenue Code', 'Rev Code', 'Revenue_Code',
+            # NWH
+            'Facility', 'Billing Code', 'Billing_Code', 'HCPCs', 'CPT/HCPCs', 'Code Description', 'Service_Description',
+            'Supply Code', 'Supply Name', 'Medication Name', 'Revenue Code', 'Rev Code', 'Revenue_Code',
             'Deidentified_Minimum_Negotiated_Charge', 'Deidentified_Maximum_Negotiated_Charge', 'NDC',
-            'Medication ID','Sheet_Name','File_Date', 
-            #RUSH
-            'description','code|1','code|1|type','code|2','code|2|type','code|3','code|3|type','code|4','code|4|type','setting','drug_unit_of_measurement'
-            ,'drug_type_of_measurement','payer_name','plan_name','modifiers','standard_charge|min','standard_charge|max','standard_charge|negotiated_dollar'
-            ,'standard_charge|negotiated_percentage','standard_charge|negotiated_algorithm','estimated_amount'
-            ,'standard_charge|methodology','additional_generic_notes','additional_payer_notes'
-
+            'Medication ID', 'Sheet_Name', 'File_Date',
+            # RUSH
+            'description', 'code|1', 'code|1|type', 'code|2', 'code|2|type', 'code|3', 'code|3|type', 'code|4', 'code|4|type', 'setting', 'drug_unit_of_measurement',
+            'drug_type_of_measurement', 'payer_name', 'plan_name', 'modifiers', 'standard_charge|min', 'standard_charge|max', 'standard_charge|negotiated_dollar',
+            'standard_charge|negotiated_percentage', 'standard_charge|negotiated_algorithm', 'estimated_amount',
+            'standard_charge|methodology', 'additional_generic_notes', 'additional_payer_notes'
         ]
         return column_name not in non_payer_columns
-    
-    
+
     def get_code(self, row):
         if 'code|2' in row and pd.notna(row['code|2']):
             return row['code|2']
@@ -151,42 +157,35 @@ class HospitalDataStandardizer:
             return 'HCPCS_CPT'
         return ''
 
-    
     def clean_code(self, code):
         if not isinstance(code, str):
             code = str(code)
         
-        # Remove 'MS-DRG' and strip surrounding whitespace
         if 'MS-DRG' in code:
             code = code.replace('MS-DRG', '').strip()
-    
-        # Remove 'HCPCS' and 'CPT' (including 'CPT®') and strip surrounding whitespace
         if 'HCPCS' in code:
             code = code.replace('HCPCS', '').strip()
         if 'CPT' in code or 'CPT®' in code:
-            code = code.replace('CPT', '').replace('CPT®', '').strip()
+            code = code.replace('CPT', '').replace('CPT®', ''). strip()
         if 'Custom' in code:
             code = code.replace('Custom', '').strip()
         if 'ADA' in code:
             code = code.replace('ADA', '').strip()
-        # Remove any text within parentheses and strip surrounding whitespace
         if '(' in code:
             code = code.split('(')[0].strip()
     
-        # Split by space and return the last element, which is assumed to be the code
         code_parts = code.split()
         if code_parts:
             return code_parts[-1][:5]
         else:
             return code[:5] if len(code) > 5 else code
 
-    
     def get_description(self, row):
         for column in ['Code Description', 'Supply Name', 'Medication Name', 'Service_Description', 'description']:
             if column in row and pd.notna(row[column]):
                 return row[column]
         return ''
-    
+
     def get_rev_code(self, row):
         for column in ['Revenue Code', 'Rev Code', 'Revenue_Code']:
             if column in row and pd.notna(row[column]):
@@ -209,4 +208,3 @@ class HospitalDataStandardizer:
             return float(rate)
         except ValueError:
             return 0.0
-
